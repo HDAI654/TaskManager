@@ -46,13 +46,19 @@ async def add_task(message: Message):
             # Delete response and message after 3 seconds
             await del_message(3, response, message)
             return
+        
+        topic = None
+        if message.is_topic_message:
+            topic = TaskService.get_topic(db=db, tID=str(message.message_thread_id))
+            if topic:
+                topic = topic.id
 
         # User replied to another message
         if message.reply_to_message and message.reply_to_message.text and message.reply_to_message.from_user.username and message.reply_to_message.from_user.username != config.BOT_USERNAME:
             original_text = message.reply_to_message.text
             if original_text and type(original_text) == str:
                 original_text = original_text.strip()
-                add_res = TaskService.create_task(db=db, title=original_text, admin_id=user.id, group_id=group.id)
+                add_res = TaskService.create_task(db=db, title=original_text, admin_id=user.id, group_id=group.id, topic_id=topic)
                 if not add_res:
                     response = await message.answer("❌ مشکلی در ساخت تسک به وجود آمد. لطفاً دوباره تلاش کنید")    
                 else:
@@ -70,7 +76,7 @@ async def add_task(message: Message):
                 except Exception:
                     logger.exception("Failed to processing task_name")
                     response = await message.answer("❌ مشکلی در پردازش نام تسک به وجود آمد. لطفاً دوباره تلاش کنید")    
-                add_res = TaskService.create_task(db=db, title=task_name, admin_id=user.id, group_id=group.id)
+                add_res = TaskService.create_task(db=db, title=task_name, admin_id=user.id, group_id=group.id, topic_id=topic)
                 if not add_res:
                     response = await message.answer("❌ مشکلی در ساخت تسک به وجود آمد. لطفاً دوباره تلاش کنید")    
                 else:

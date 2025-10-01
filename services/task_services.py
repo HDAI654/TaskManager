@@ -34,15 +34,31 @@ class TaskService:
         """
         Retrieve a group either by its database ID or Telegram ID.
         """
+        if id==None and tID==None:
+            return None
         if tID:
             group = db.query(Group).filter(Group.telegram_id == tID).first()
         else:
             group = db.query(Group).filter(Group.id == id).first()
         return group
+    
+    @staticmethod
+    @exception_decorator
+    def get_topic(db: Session, id: int = None, tID: int = None) -> Topic | None:
+        """
+        Retrieve a topic by its database ID.
+        """
+        if tID:
+            topic = db.query(Topic).filter(Topic.telegram_id == tID).first()
+            return topic
+        if id==None:
+            return None
+        topic = db.query(Topic).filter(Topic.id == id).first()
+        return topic
 
     @staticmethod
     @exception_decorator
-    def get_or_create_topic(db: Session, telegram_topic_id: str, group_id: int):
+    def get_or_create_topic(db: Session, telegram_topic_id: str, group_id: int, name: str, link: str):
         """
         Retrieve a topic by its telegram_topic_id and group_id,
         or create a new one if it does not exist.
@@ -59,7 +75,7 @@ class TaskService:
         
         if not topic:
             # Create new topic if it does not exist
-            topic = Topic(telegram_id=telegram_topic_id, group_id=group_id)
+            topic = Topic(telegram_id=telegram_topic_id, group_id=group_id, name=name, link=link)
             db.add(topic)
             db.commit()
             db.refresh(topic)
@@ -203,25 +219,33 @@ class TaskService:
     
     @staticmethod
     @exception_decorator
-    def get_all_topics(db: Session) -> List[Topic] | None:
+    def get_all_topics(db: Session, group_id: int = None) -> List[Topic] | None:
         """
         Retrieve all topics from the database.
         """
+        if group_id:
+            topics = db.query(Topic).filter(Topic.group_id == group_id).all()
+            return topics
         topics = db.query(Topic).all()
         return topics
     
     @staticmethod
     @exception_decorator
-    def get_all_tasks(db: Session, group_id: int = None) -> List[Task] | None:
+    def get_all_tasks(db: Session, group_id: int = None, topic_id: int = None) -> List[Task] | None:
         """
         Retrieve all tasks.
-        If group_id is provided, return tasks only for that group.
-        If group_id is False, return tasks without a group.
+        It can be filltered by group_id or topic_id
         """
-        if group_id:
+        if group_id != None and topic_id == False:
+            tasks = db.query(Task).filter(Task.group_id==group_id, Task.topic_id.is_(None)).all()
+        elif group_id:
             tasks = db.query(Task).filter(Task.group_id == group_id).all()
         elif group_id == False:
             tasks = db.query(Task).filter(Task.group_id.is_(None)).all()
+        elif topic_id:
+            tasks = db.query(Task).filter(Task.topic_id == topic_id).all()
+        elif topic_id == False:
+            tasks = db.query(Task).filter(Task.topic_id.is_(None)).all() 
         else:
             tasks = db.query(Task).all()
         return tasks

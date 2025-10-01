@@ -19,6 +19,8 @@ class Topic(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     telegram_id = Column(String(255), nullable=False)
+    link = Column(String(255), nullable=True)
+    name = Column(String(255), nullable=True)
     group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
     
     group = relationship("Group", back_populates="topics")

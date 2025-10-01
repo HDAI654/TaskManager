@@ -28,7 +28,7 @@ def task_manage_keyboard(db) -> Tuple[List[str], InlineKeyboardMarkup]:
     
     groups = TaskService.get_all_groups(db=db)
     if groups is None:
-        text.append("⚠️ هیچ تاپیکی برای نمایش وجود ندارد ⚠️")
+        text.append("⚠️ هیچ گروهی برای نمایش وجود ندارد ⚠️")
         tasks = TaskService.get_all_tasks(db=db)
         if tasks is None:
             text.append("⚠️ هیچ تسکی برای نمایش وجود ندارد ⚠️")
@@ -40,6 +40,7 @@ def task_manage_keyboard(db) -> Tuple[List[str], InlineKeyboardMarkup]:
                     for c in chunk_list(tasks, 2)
                 ]
             )
+    
     else:
         text.append(f"گروه ها : \n تعداد: {len(groups)}")
         keyboard.inline_keyboard.extend(
@@ -79,26 +80,45 @@ async def handle_view_group_tasks(callback_query: CallbackQuery):
             await callback_query.answer("❌ مشکلی در پیدا کردن این گروه به وجود آمد")
             return
         
-        tasks = TaskService.get_all_tasks(db=db, group_id=group_ID)
-        if not tasks:
-            await callback_query.answer("⚠️ تسکی برای این گروه پیدا نشد ⚠️")
-            return
+        topics = None
+        tasks = None
+        if group:
+            topics = TaskService.get_all_topics(db=db, group_id=group.id)
+        if topics and len(topics) > 0:
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+            keyboard.inline_keyboard.extend(
+                [
+                    [InlineKeyboardButton(text=b.name, callback_data=f"view_topic|{b.id}") for b in c]
+                    for c in chunk_list(topics, 2)
+                ]
+            )
+            keyboard.inline_keyboard.append(
+                [
+                    InlineKeyboardButton(text="باز گشت 🔙", callback_data="back"),
+                    InlineKeyboardButton(text="سایر ...", callback_data=f"view_topic|OTHER|{group.id}"),
+                ]
+            )
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
-        keyboard.inline_keyboard.extend(
-            [
-                [InlineKeyboardButton(text=b.title, callback_data=f"view_task|{b.id}") for b in c]
-                for c in chunk_list(tasks, 2)
-            ]
-        )
-        keyboard.inline_keyboard.append(
-            [InlineKeyboardButton(text="باز گشت 🔙", callback_data=f"back")]
-        )
+        else:
+            tasks = TaskService.get_all_tasks(db=db, group_id=group_ID)
+            if not tasks:
+                await callback_query.answer("⚠️ تسکی برای این گروه پیدا نشد ⚠️")
+                return
             
-        
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+            keyboard.inline_keyboard.extend(
+                [
+                    [InlineKeyboardButton(text=b.title, callback_data=f"view_task|{b.id}") for b in c]
+                    for c in chunk_list(tasks, 2)
+                ]
+            )
+            keyboard.inline_keyboard.append(
+                [InlineKeyboardButton(text="باز گشت 🔙", callback_data="back")]
+            )
+            
         await callback_query.message.edit_text(
-            f"تسک های گروه {group.name}: \n" if group else "تسک ها \n"
-            f"تعداد: {len(tasks)}\n\n",
+            f"{"تسک" if tasks else "تاپیک"}{f"های گروه {group.name}" if group else " های سایر"}: \n"
+            f"تعداد: {len(tasks) if tasks else len(topics)}\n\n",
             reply_markup=keyboard
         )
     
@@ -117,6 +137,70 @@ async def handle_view_group_tasks(callback_query: CallbackQuery):
                 db.close()
             except Exception:
                 logger.exception("Failed to close database connection")
+
+
+# ===== Handler for show topic's tasks =====
+@router.callback_query(F.data.startswith("view_topic|"))
+async def handle_view_topic_tasks(callback_query: CallbackQuery):
+    db = None
+    try:
+        # Get database session
+        db = next(get_db())
+
+        # Extract topic's ID
+        try:
+            topic_ID = callback_query.data.split("|")[1]
+            if topic_ID == "OTHER":
+                group_ID = int(callback_query.data.split("|")[2])
+                topic = None
+                topic_ID = False
+        except Exception:
+            logger.exception("Failed to extract topic's ID from callback_query")
+            await callback_query.answer("❌ مشکلی در پیدا کردن این تاپیک به وجود آمد")
+            return
+
+        if topic_ID == False:
+            tasks = TaskService.get_all_tasks(db=db, topic_id=topic_ID, group_id=group_ID)
+        else:
+            tasks = TaskService.get_all_tasks(db=db, topic_id=topic_ID)
+        if not tasks:
+            await callback_query.answer("⚠️ تسکی برای این تاپیک پیدا نشد ⚠️")
+            return
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+        keyboard.inline_keyboard.extend(
+            [
+                [InlineKeyboardButton(text=b.title, callback_data=f"view_task|{b.id}") for b in c]
+                for c in chunk_list(tasks, 2)
+            ]
+        )
+        keyboard.inline_keyboard.append(
+            [InlineKeyboardButton(text="باز گشت 🔙", callback_data="back")]
+        )
+            
+        await callback_query.message.edit_text(
+            f"تسک های {f"تایپک {topic.name}" if topic else " سایر"}"
+            f"تعداد: {len(tasks)}\n\n",
+            reply_markup=keyboard
+        )
+        await callback_query.answer()
+    
+    except Exception:
+        # Log unexpected errors
+        logger.exception("Unexpected error occurred")
+        try:
+            await callback_query.answer("❌خطایی رخ داد. لطفاً دوباره تلاش کنید.")
+        except Exception:
+            logger.exception("Failed to send error message")   
+    
+    finally:
+        # Ensure database connection is always closed
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                logger.exception("Failed to close database connection")
+
 
 
 # ===== Handler for finish manage =====
@@ -189,6 +273,9 @@ async def handle_view_task(callback_query: CallbackQuery, state: FSMContext = No
         db = next(get_db())
         task = TaskService.get_task_by_id(db=db, id=task_id)
         admin = UserService.get_user(db, user_ID=task.admin_id)
+        group = TaskService.get_group(db, task.group_id)
+        topic = TaskService.get_topic(db=db, id=task.topic_id)
+            
         
         if not task or not admin:
             await callback_query.answer("❌ تسک یافت نشد")
@@ -231,15 +318,24 @@ async def handle_view_task(callback_query: CallbackQuery, state: FSMContext = No
         
         inline_keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
         
+        text = [
+            f"📋 {task.title}\n\n",
+            f"مدیر : @{admin.username}\n",
+            f"📝 توضیحات: {task.description or 'بدون توضیح'}\n",
+            f"📅 شروع: {task.start_date.strftime('%Y-%m-%d') if task.start_date else 'تعیین نشده'}\n",
+            f"📅 پایان: {task.end_date.strftime('%Y-%m-%d') if task.end_date else 'تعیین نشده'}\n",
+            f"🔧 وضعیت: {task.status}\n\n",
+        ]
+        if topic:
+            text.insert(2, f"تاپیک : {topic.name} - {topic.link}\n")
+        if group:
+            text.insert(2, f"گروه : {group.name}\n")
+
+        text = "".join(text)
+
         # Edit previous message
         await callback_query.message.edit_text(
-            f"📋 تسک انتخاب شده: {task.title}\n\n"
-            f"سازنده : @{admin.username}\n"
-            f"📝 توضیحات: {task.description or 'بدون توضیح'}\n"
-            f"📅 شروع: {task.start_date.strftime('%Y-%m-%d') if task.start_date else 'تعیین نشده'}\n"
-            f"📅 پایان: {task.end_date.strftime('%Y-%m-%d') if task.end_date else 'تعیین نشده'}\n"
-            f"🔧 وضعیت: {task.status}\n\n"
-            "عملیات ها:",
+            text=text,
             reply_markup=inline_keyboard
         )
         
@@ -795,7 +891,6 @@ async def handle_add_user(callback_query: CallbackQuery, state: FSMContext):
         # Create inline keyboard with suggested users
         keyboard_buttons = []
         
-        print(len(list(suggested_users)))
         # Add suggested users as buttons
         if len(list(suggested_users)) != 0:
             for username in suggested_users:
@@ -1372,3 +1467,153 @@ async def handle_my_tasks_message(message: Message):
 @router.callback_query(F.data == "back_show")
 async def handle_my_tasks_callback(callback: CallbackQuery):
     await handle_my_tasks(event=callback)
+
+# ===== Time, Attach, Des and Name commands
+# ===== Short Edit Commands Handler =====
+@router.message(Command("name"))
+@router.message(Command("des"))
+@router.message(Command("attach"))
+@router.message(Command("time"))
+async def handle_short_edits(message: Message, state: FSMContext):
+    """
+    Handler for quick edit commands:
+    /name - change task name
+    /time - change task deadline
+    /des  - change task description
+    """
+    db = None
+    try:
+        print("WIEO")
+        # Extract text and split into command and value
+        text = message.text.strip()
+        command_parts = text.split(maxsplit=1)
+        
+        # If command is incomplete, show correct format
+        if len(command_parts) < 2:
+            await message.answer(
+                "❌ Invalid command format.\n\n"
+                "📝 Correct format:\n"
+                "/name New task name\n"
+                "/time YYYY-MM-DD\n"
+                "/des New description"
+            )
+            return
+        
+        command = command_parts[0]  # The command itself
+        value = command_parts[1]    # The argument after command
+        
+        # Determine edit type and value
+        if command == "/name":
+            if not value.strip():
+                await message.answer("❌ Name cannot be empty")
+                return
+            edit_type = "name"
+            edit_value = value.strip()
+            
+        elif command == "/time":
+            # Check date format
+            try:
+                datetime.datetime.strptime(value, "%Y-%m-%d")
+                edit_type = "time" 
+                edit_value = value
+            except ValueError:
+                await message.answer(
+                    "❌ Invalid date format\n\n"
+                    "📅 Correct format: YYYY-MM-DD\n"
+                    "Example: 2024-01-15"
+                )
+                return
+                
+        elif command == "/des":
+            if not value.strip():
+                await message.answer("❌ Description cannot be empty")
+                return
+            edit_type = "des"
+            edit_value = value.strip()
+            
+        else:
+            await message.answer("❌ Invalid command")
+            return
+        
+        # Get user from database
+        db = next(get_db())
+        user = UserService.get_user(db=db, user_tID=message.from_user.id)
+        if not user:
+            await message.answer("❌ User not found")
+            return
+        
+        # Get tasks for user
+        tasks = TaskService.get_tasks_for_user(db=db, user_id=user.id)
+        if not tasks:
+            await message.answer("⚠️ No tasks found for you")
+            return
+        
+        # Store data in FSM state for later use
+        await state.update_data(
+            edit_type=edit_type,
+            edit_value=edit_value,
+            command_message_id=message.message_id
+        )
+        
+        # Build inline keyboard for task selection
+        keyboard_buttons = []
+        task_chunks = chunk_list(tasks, 2)  # Split tasks in chunks of 2
+        for chunk in task_chunks:
+            row = []
+            for task in chunk:
+                row.append(
+                    InlineKeyboardButton(
+                        text=task.title,
+                        callback_data=f"apply_edit|{task.id}"
+                    )
+                )
+            keyboard_buttons.append(row)
+        
+        # Add cancel button
+        keyboard_buttons.append([
+            InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_edit")
+        ])
+        
+        inline_keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        
+        # Prepare message text based on edit type
+        if edit_type == "name":
+            message_text = (
+                f"✏️ Edit task name\n\n"
+                f"📝 New name: {edit_value}\n\n"
+                "Please select the task:"
+            )
+        elif edit_type == "time":
+            message_text = (
+                f"📅 Edit task deadline\n\n"
+                f"🕐 New date: {edit_value}\n\n"
+                "Please select the task:"
+            )
+        elif edit_type == "des":
+            desc_preview = edit_value[:50] + "..." if len(edit_value) > 50 else edit_value
+            message_text = (
+                f"📋 Edit task description\n\n"
+                f"📝 New description: {desc_preview}\n\n"
+                "Please select the task:"
+            )
+        
+        # Send message with task list
+        await message.answer(message_text, reply_markup=inline_keyboard)
+        
+        # Delete user's command message
+        await message.delete()
+        
+    except Exception as e:
+        logger.exception("Error processing quick edit command")
+        try:
+            await message.answer("❌ An error occurred while processing the command. Please try again.")
+        except Exception:
+            logger.exception("Failed to send error message")
+    
+    finally:
+        # Close database connection
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                logger.exception("Failed to close DB connection")

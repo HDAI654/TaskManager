@@ -102,6 +102,18 @@ def get_main_menu_keyboard(chat_type: ChatType, is_admin: bool = False) -> Reply
                 KeyboardButton(text="/user"),
                 
             ])
+            keyboards.append(
+            [
+                KeyboardButton(text="/name"),
+                KeyboardButton(text="/des"),
+                
+            ])
+            keyboards.append(
+            [
+                KeyboardButton(text="/attach"),
+                KeyboardButton(text="/time"),
+                
+            ])
         
         else:
             keyboards.append(
@@ -120,6 +132,18 @@ def get_main_menu_keyboard(chat_type: ChatType, is_admin: bool = False) -> Reply
         [
             KeyboardButton(text="/add"),
             KeyboardButton(text="/user"),
+            
+        ])
+        keyboards.append(
+        [
+            KeyboardButton(text="/name"),
+            KeyboardButton(text="/des"),
+            
+        ])
+        keyboards.append(
+        [
+            KeyboardButton(text="/attach"),
+            KeyboardButton(text="/time"),
             
         ])
 
