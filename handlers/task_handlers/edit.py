@@ -1,8 +1,9 @@
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from aiogram.filters import Command
-from .. import admin_require, del_message, get_callback
+from .. import admin_require, del_message, get_callback, chat_type_filter
 from .. import main_router as router
 from database import get_db
+from aiogram.enums import ChatType
 from logger import logger
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -14,7 +15,10 @@ from aiogram import F
 import asyncio
 import datetime
 from aiogram.exceptions import TelegramBadRequest
-from models import User
+import re
+import uuid
+
+media_cache = {}
 
 
 @exception_decorator
@@ -179,7 +183,7 @@ async def handle_view_topic_tasks(callback_query: CallbackQuery):
         )
             
         await callback_query.message.edit_text(
-            f"تسک های {f"تایپک {topic.name}" if topic else " سایر"}"
+            f"تسک ها\n"
             f"تعداد: {len(tasks)}\n\n",
             reply_markup=keyboard
         )
@@ -1273,7 +1277,7 @@ async def handle_add_attachment(callback_query: CallbackQuery, state: FSMContext
             logger.exception("Failed to send callback error message")
 
 
-@router.message()
+@router.message(F.document | F.photo | F.video | F.audio | F.voice)
 async def handle_new_attachment(message: Message, state: FSMContext):
     """
     Handle any new messages or files as attachments if the user is in 'adding_attachments' mode.
@@ -1312,7 +1316,8 @@ async def handle_new_attachment(message: Message, state: FSMContext):
         TaskAttachmentService.add_attachment(db=db, task_id=task_id, attachment_id=attachment_id)
 
         # Optionally notify user
-        await message.answer("✅ فایل به عنوان اتچمنت اضافه شد")
+        msg = await message.answer("✅ فایل به عنوان اتچمنت اضافه شد")
+        await del_message(3, msg)
 
     except Exception:
         logger.exception("Unexpected error occurred")
@@ -1468,152 +1473,283 @@ async def handle_my_tasks_message(message: Message):
 async def handle_my_tasks_callback(callback: CallbackQuery):
     await handle_my_tasks(event=callback)
 
-# ===== Time, Attach, Des and Name commands
-# ===== Short Edit Commands Handler =====
+# ===== Short Edit Commands Handler (Time, Attach, Des and Name commands) =====
 @router.message(Command("name"))
 @router.message(Command("des"))
 @router.message(Command("attach"))
 @router.message(Command("time"))
-async def handle_short_edits(message: Message, state: FSMContext):
-    """
-    Handler for quick edit commands:
-    /name - change task name
-    /time - change task deadline
-    /des  - change task description
-    """
+async def handle_short_edits(message: Message):
     db = None
     try:
-        print("WIEO")
-        # Extract text and split into command and value
-        text = message.text.strip()
-        command_parts = text.split(maxsplit=1)
-        
-        # If command is incomplete, show correct format
-        if len(command_parts) < 2:
-            await message.answer(
-                "❌ Invalid command format.\n\n"
-                "📝 Correct format:\n"
-                "/name New task name\n"
-                "/time YYYY-MM-DD\n"
-                "/des New description"
-            )
-            return
-        
-        command = command_parts[0]  # The command itself
-        value = command_parts[1]    # The argument after command
-        
-        # Determine edit type and value
-        if command == "/name":
-            if not value.strip():
-                await message.answer("❌ Name cannot be empty")
-                return
-            edit_type = "name"
-            edit_value = value.strip()
-            
-        elif command == "/time":
-            # Check date format
-            try:
-                datetime.datetime.strptime(value, "%Y-%m-%d")
-                edit_type = "time" 
-                edit_value = value
-            except ValueError:
-                await message.answer(
-                    "❌ Invalid date format\n\n"
-                    "📅 Correct format: YYYY-MM-DD\n"
-                    "Example: 2024-01-15"
-                )
-                return
-                
-        elif command == "/des":
-            if not value.strip():
-                await message.answer("❌ Description cannot be empty")
-                return
-            edit_type = "des"
-            edit_value = value.strip()
-            
-        else:
-            await message.answer("❌ Invalid command")
-            return
-        
-        # Get user from database
         db = next(get_db())
-        user = UserService.get_user(db=db, user_tID=message.from_user.id)
-        if not user:
-            await message.answer("❌ User not found")
-            return
+
+        # Define command patterns with regex
+        patterns = {
+            # /name <any non-empty text>
+            "name": re.compile(r"^/name\s+(.+)$", re.IGNORECASE),
+
+            # /des <any non-empty text>
+            "des": re.compile(r"^/des\s+(.+)$", re.IGNORECASE),
+
+            # /time YYYY-MM-DD (validated later with datetime)
+            "time": re.compile(r"^/time\s+(\d{4}-\d{2}-\d{2})$", re.IGNORECASE),
+
+            # /attach or /atach optionally followed by a filename or argument
+            # Accept both spellings and allow optional argument
+            "attach": re.compile(r"^/(?:attach|atach)(?:\s+(.+))?$", re.IGNORECASE),
+        }
         
-        # Get tasks for user
-        tasks = TaskService.get_tasks_for_user(db=db, user_id=user.id)
+        text = message.text.strip()
+        callback_text = None
+
+        # Iterate over command patterns to match the message
+        for key, pattern in patterns.items():
+            m = pattern.match(text)
+            if not m:
+                continue
+
+            # Extract value (may be None for /attach without argument)
+            value = m.group(1) if m.groups() else None
+
+            if key == "name":
+                # Name must be non-empty (regex ensures this)
+                new_name = value.strip()
+                callback_text = f"short_edit|name|{new_name}"
+
+            if key == "des":
+                new_desc = value.strip()
+                callback_text = f"short_edit|des|{new_desc}"
+
+            if key == "time":
+                date_str = value
+                # Validate date format and parse it
+                try:
+                    parsed = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+                except ValueError:
+                    await message.answer("❌ فرمنت زمان معتبر نیست. فرمت درست : YYYY-MM-DD")
+                    return
+                callback_text = f"short_edit|time|{parsed.isoformat()}"
+         
+            if key == "attach":
+                # Ensure the command is a reply to a message containing media
+                if not message.reply_to_message or not message.reply_to_message.from_user.username:
+                    em = await message.answer("❌ لطفاً این دستور را ریپلای روی یک پیام حاوی فایل‌ها/مدیاها بفرستید")
+                    await del_message(3, em, message)
+                    return
+
+                reply_msg = message.reply_to_message
+                file_ids = []
+
+                # Collect file_ids from all possible media types in the replied message
+                if reply_msg.photo:
+                    file_ids.append(reply_msg.photo[-1].file_id)
+                if reply_msg.video:
+                    file_ids.append(reply_msg.video.file_id)
+                if reply_msg.audio:
+                    file_ids.append(reply_msg.audio.file_id)
+                if reply_msg.voice:
+                    file_ids.append(reply_msg.voice.file_id)
+                if reply_msg.document:
+                    file_ids.append(reply_msg.document.file_id)
+
+                # Generate a unique key for storing these files in memory
+                media_key = str(uuid.uuid4()) 
+                media_cache[media_key] = file_ids
+
+                # Set callback text for the attach operation
+                callback_text = f"short_edit|attach|{media_key}"
+
+        # If no command pattern matched, notify the user
+        if not callback_text:
+            em = await message.answer("❌ دستوری که فرستادید معتبر نیست")
+            await del_message(3, em, message)
+            return
+
+        tasks = None
+
+        # Fetch tasks depending on chat type and topic
+        if message.chat.type in ("group", "supergroup"):
+            if message.is_topic_message:
+                topic = TaskService.get_topic(db=db, tID=str(message.message_thread_id))
+                if not topic:
+                    em = await message.answer("هیچ تسکی برای این تاپیک وجود ندارد")
+                    await del_message(3, message, em)
+                    return
+                tasks = TaskService.get_all_tasks(db=db, topic_id=topic.id)
+            else:
+                group = TaskService.get_group(db=db, tID=str(message.chat.id))
+                if not group:
+                    em = await message.answer("هیچ تسکی برای این گروه وجود ندارد")
+                    await del_message(3, message, em)
+                    return
+                tasks = TaskService.get_all_tasks(db=db, group_id=group.id)
+        else:
+            return
+
+        # If no tasks found, notify user
         if not tasks:
-            await message.answer("⚠️ No tasks found for you")
+            em = await message.answer("❌ هیچ تسکی پیدا نشد")
+            await del_message(3, em, message)
             return
         
-        # Store data in FSM state for later use
-        await state.update_data(
-            edit_type=edit_type,
-            edit_value=edit_value,
-            command_message_id=message.message_id
+        # Prepare inline keyboard for selecting task
+        keyboard = []
+        for t in tasks:
+            keyboard.append([
+                InlineKeyboardButton(text=t.title, callback_data=f"{callback_text}|{t.id}")
+            ])
+
+        await message.answer(
+            "تسک مورد نظر را برای اعمال این عملیات انتحاب کنید",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
-        
-        # Build inline keyboard for task selection
-        keyboard_buttons = []
-        task_chunks = chunk_list(tasks, 2)  # Split tasks in chunks of 2
-        for chunk in task_chunks:
-            row = []
-            for task in chunk:
-                row.append(
-                    InlineKeyboardButton(
-                        text=task.title,
-                        callback_data=f"apply_edit|{task.id}"
-                    )
-                )
-            keyboard_buttons.append(row)
-        
-        # Add cancel button
-        keyboard_buttons.append([
-            InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_edit")
-        ])
-        
-        inline_keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
-        
-        # Prepare message text based on edit type
-        if edit_type == "name":
-            message_text = (
-                f"✏️ Edit task name\n\n"
-                f"📝 New name: {edit_value}\n\n"
-                "Please select the task:"
-            )
-        elif edit_type == "time":
-            message_text = (
-                f"📅 Edit task deadline\n\n"
-                f"🕐 New date: {edit_value}\n\n"
-                "Please select the task:"
-            )
-        elif edit_type == "des":
-            desc_preview = edit_value[:50] + "..." if len(edit_value) > 50 else edit_value
-            message_text = (
-                f"📋 Edit task description\n\n"
-                f"📝 New description: {desc_preview}\n\n"
-                "Please select the task:"
-            )
-        
-        # Send message with task list
-        await message.answer(message_text, reply_markup=inline_keyboard)
-        
-        # Delete user's command message
         await message.delete()
-        
-    except Exception as e:
-        logger.exception("Error processing quick edit command")
+    
+    except Exception:
+        logger.exception("Unexpected error occurred")
         try:
-            await message.answer("❌ An error occurred while processing the command. Please try again.")
+            await message.answer("❌ خطا در انجام عملیات")
         except Exception:
             logger.exception("Failed to send error message")
     
     finally:
-        # Close database connection
-        if db is not None:
+        # Ensure DB session is closed
+        if db:
             try:
                 db.close()
             except Exception:
-                logger.exception("Failed to close DB connection")
+                logger.exception("Failed to close DB session")
+
+
+# ===== Callback Handler for Short Edit =====
+@router.callback_query(F.data.startswith("short_edit|"))
+async def short_edit_confirm(callback_query: CallbackQuery):
+    """
+    Handles the callback when a user selects a task to apply a short edit.
+    Triggered by inline buttons from handle_short_edits.
+    Expected callback format: short_edit|<type>|<value>|<task_id>
+    - <type>: name, des, time, attach
+    - <value>: new value or list of file IDs for attachments
+    - <task_id>: the task to apply the change to
+    """
+    db = None
+    try:
+        db = next(get_db())
+
+        # Split the callback data to extract edit type, value, and task ID
+        data_parts = callback_query.data.split("|")
+
+        # Determine type of edit and value(s)
+        edit_type = data_parts[1]
+        edit_value = data_parts[2]
+        task_id = int(data_parts[-1])
+
+        if not task_id:
+            await callback_query.answer("❌ Task ID missing")
+            return
+
+        # Handle changing the task's name
+        if edit_type == "name":
+            result = TaskService.edit_task(db=db, task_id=task_id, name=edit_value)
+            success_message = f"✅ نام تسک تغییر کرد به: {edit_value}"
+
+        # Handle changing the task's description
+        elif edit_type == "des":
+            result = TaskService.edit_task(db=db, task_id=task_id, description=edit_value)
+            success_message = "✅ توضیحات تغییر کرد"
+
+        # Handle changing the task's end date
+        elif edit_type == "time":
+            try:
+                end_date = datetime.datetime.strptime(edit_value, "%Y-%m-%d")
+            except ValueError:
+                await callback_query.answer("❌ Invalid date format. Expected YYYY-MM-DD")
+                return
+            result = TaskService.edit_task(db=db, task_id=task_id, end_date=end_date)
+            success_message = f"✅ تاریخ تسک تغییر کرد به : {edit_value}"
+
+        # Handle attaching files to the task
+        elif edit_type == "attach":
+            result = True
+            media_key = edit_value
+            file_ids = media_cache.get(media_key, [])
+            added_count = 0
+
+            # Add each file ID to the task using TaskAttachmentService
+            for file_id in file_ids:
+                try:
+                    TaskAttachmentService.add_attachment(db=db, task_id=task_id, attachment_id=file_id)
+                    added_count += 1
+                except Exception:
+                    logger.exception(f"Failed to attach file {file_id} to task {task_id}")
+
+            # Notify user if no files were added
+            if added_count == 0:
+                await callback_query.answer("❌ هیچ فایلی اضافه نشد")
+                return
+
+            # Inform user about successful attachments and remove cache
+            success_message = f"✅ تعداد {added_count} فایل به تسک اضافه شد"
+            file_ids = media_cache.__delitem__(media_key)
+
+            view_keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="📋 دیدن تسک", callback_data=f"view_task|{task_id}")],
+                    [InlineKeyboardButton(text="اتمام عملیات", callback_data=f"end_short_edit")],
+                ]
+            )
+
+            # Update the message to show confirmation and options
+            await callback_query.message.edit_text(success_message, reply_markup=view_keyboard)
+            await callback_query.answer("✅ فایل‌ها با موفقیت اضافه شدند")
+
+        # Handle invalid edit types
+        else:
+            await callback_query.answer("❌ دستور نامعتبر است")
+            return
+
+        # Check the result and notify the user
+        if result == "NOT_EXIST":
+            await callback_query.answer("❌ این تسک وجود ندارد")
+            return
+        elif result:
+            # Confirm the edit and provide buttons to view task or finish
+            view_keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="📋 دیدن تسک", callback_data=f"view_task|{task_id}")],
+                    [InlineKeyboardButton(text="اتمام عملیات", callback_data=f"end_short_edit")],
+                ]
+            )
+            await callback_query.message.edit_text(success_message, reply_markup=view_keyboard)
+            await callback_query.answer("✅ تغییرات با موفقیت انجام شد")
+        else:
+            await callback_query.answer("❌ تغییرات ناموفق بود")
+
+    except Exception:
+        logger.exception("Unexpected error occurred")
+        try:
+            await callback_query.answer("❌ خطا در انجام عملیات", show_alert=True)
+        except Exception:
+            logger.exception("Failed to send error message")
+    
+    finally:
+        # Ensure the DB session is closed
+        if db:
+            try:
+                db.close()
+            except Exception:
+                logger.exception("Failed to close DB session")
+
+
+# ===== Callback Handler for Ending Short Edit =====
+@router.callback_query(F.data == "end_short_edit")
+async def short_edit_confirm(callback_query: CallbackQuery):
+    try:
+        # Delete the message when user finishes short edit
+        await callback_query.message.delete()
+    except Exception:
+        logger.exception("Unexpected error occurred")
+        try:
+            await callback_query.answer("❌ خطا در اتمام عملیات")
+        except Exception:
+            logger.exception("Failed to send error message")
