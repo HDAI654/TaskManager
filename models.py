@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, PickleType
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, PickleType, inspect
 from sqlalchemy.orm import relationship
 from database import Base, engine
 from sqlalchemy.ext.mutable import MutableList
 from datetime import datetime
+from logger import logger
 
 class Group(Base):
     __tablename__ = "groups"
@@ -80,14 +81,18 @@ class TaskAttachment(Base):
 
 
 def init_db():
-    """Delete all tables and create them again"""
-    print("Deleting tables ...")
-    Base.metadata.drop_all(bind=engine)
-    
-    print("Creating tables ...")
-    Base.metadata.create_all(bind=engine)
-    
-    print("DB is up-to-date .")
+    try:
+        inspector = inspect(engine)
+        existing_tables = inspector.get_table_names()
+
+        if not existing_tables:
+            logger.info("No existing tables found. Creating tables ...")
+            Base.metadata.create_all(bind=engine)
+            logger.info("Tables created successfully.")
+        else:
+            logger.info("Tables already exist. Skipping creation.")
+    except Exception:
+        logger.exception("Failed to create the tables")
 
 if __name__ == "__main__":
     init_db()

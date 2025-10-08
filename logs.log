@@ -4131,3 +4131,209 @@ Traceback (most recent call last):
     raise TelegramBadRequest(method=method, message=description)
 aiogram.exceptions.TelegramBadRequest: Telegram server says - Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
 2025-10-02 16:28:54 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-03 12:40:01 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:31:06 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:31:06 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:32:21 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:32:25 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:34:27 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:34:28 - dev_logger - ERROR - set_commands: Faild to add commands to bot
+Traceback (most recent call last):
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/python_socks/async_/asyncio/v2/_proxy.py", line 97, in _connect
+    stream = await connect_tcp(
+             ^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/python_socks/async_/asyncio/v2/_connect.py", line 16, in connect_tcp
+    reader, writer = await asyncio.open_connection(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/streams.py", line 48, in open_connection
+    transport, _ = await loop.create_connection(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1122, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1104, in create_connection
+    sock = await self._connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1007, in _connect_sock
+    await self.sock_connect(sock, address)
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
+    return await fut
+           ^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 111] Connect call failed ('192.168.161.98', 2600)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/client.py", line 770, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/client.py", line 725, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/connector.py", line 642, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/connector.py", line 1209, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/connector.py", line 1550, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp_socks/connector.py", line 66, in _wrap_create_connection
+    return await self._connect_via_proxy(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp_socks/connector.py", line 123, in _connect_via_proxy
+    stream = await proxy.connect(
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/python_socks/async_/asyncio/v2/_proxy.py", line 79, in connect
+    return await self._connect(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/python_socks/async_/asyncio/v2/_proxy.py", line 104, in _connect
+    raise ProxyConnectionError(
+python_socks._errors.ProxyConnectionError: [Errno 111] Couldn't connect to proxy 192.168.161.98:2600 [Connect call failed ('192.168.161.98', 2600)]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/session/aiohttp.py", line 177, in make_request
+    async with session.post(
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/client.py", line 1488, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/client.py", line 789, in _request
+    raise ClientOSError(*exc.args) from exc
+aiohttp.client_exceptions.ClientOSError: [Errno 111] Couldn't connect to proxy 192.168.161.98:2600 [Connect call failed ('192.168.161.98', 2600)]
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hamed/Documents/TaskPRJ/main.py", line 43, in set_commands
+    await bot.set_my_commands(commands)
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/bot.py", line 3702, in set_my_commands
+    return await self(call, request_timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/bot.py", line 485, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/session/base.py", line 254, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/session/aiohttp.py", line 184, in make_request
+    raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}")
+aiogram.exceptions.TelegramNetworkError: HTTP Client says - ClientOSError: [Errno 111] Couldn't connect to proxy 192.168.161.98:2600 [Connect call failed ('192.168.161.98', 2600)]
+2025-10-08 17:34:28 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:34:32 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:34:38 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:34:39 - dev_logger - ERROR - set_commands: Faild to add commands to bot
+Traceback (most recent call last):
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/python_socks/async_/asyncio/v2/_proxy.py", line 97, in _connect
+    stream = await connect_tcp(
+             ^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/python_socks/async_/asyncio/v2/_connect.py", line 16, in connect_tcp
+    reader, writer = await asyncio.open_connection(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/streams.py", line 48, in open_connection
+    transport, _ = await loop.create_connection(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1122, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1104, in create_connection
+    sock = await self._connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1007, in _connect_sock
+    await self.sock_connect(sock, address)
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
+    return await fut
+           ^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 111] Connect call failed ('192.168.161.98', 2600)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/client.py", line 770, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/client.py", line 725, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/connector.py", line 642, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/connector.py", line 1209, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/connector.py", line 1550, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp_socks/connector.py", line 66, in _wrap_create_connection
+    return await self._connect_via_proxy(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp_socks/connector.py", line 123, in _connect_via_proxy
+    stream = await proxy.connect(
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/python_socks/async_/asyncio/v2/_proxy.py", line 79, in connect
+    return await self._connect(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/python_socks/async_/asyncio/v2/_proxy.py", line 104, in _connect
+    raise ProxyConnectionError(
+python_socks._errors.ProxyConnectionError: [Errno 111] Couldn't connect to proxy 192.168.161.98:2600 [Connect call failed ('192.168.161.98', 2600)]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/session/aiohttp.py", line 177, in make_request
+    async with session.post(
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/client.py", line 1488, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiohttp/client.py", line 789, in _request
+    raise ClientOSError(*exc.args) from exc
+aiohttp.client_exceptions.ClientOSError: [Errno 111] Couldn't connect to proxy 192.168.161.98:2600 [Connect call failed ('192.168.161.98', 2600)]
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hamed/Documents/TaskPRJ/main.py", line 43, in set_commands
+    await bot.set_my_commands(commands)
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/bot.py", line 3702, in set_my_commands
+    return await self(call, request_timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/bot.py", line 485, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/session/base.py", line 254, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hamed/Documents/TaskPRJ/venv/lib/python3.12/site-packages/aiogram/client/session/aiohttp.py", line 184, in make_request
+    raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}")
+aiogram.exceptions.TelegramNetworkError: HTTP Client says - ClientOSError: [Errno 111] Couldn't connect to proxy 192.168.161.98:2600 [Connect call failed ('192.168.161.98', 2600)]
+2025-10-08 17:34:39 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:34:51 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:34:56 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:34:58 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:40:14 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:40:18 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:40:20 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:40:25 - dev_logger - ERROR - sync_wrapper: Error in get_user: UserService.get_user() got an unexpected keyword argument 'user_id'
+2025-10-08 17:41:04 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:41:08 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:41:10 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:43:24 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:43:28 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:43:29 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:44:05 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:44:10 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:44:11 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:46:55 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:46:59 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:47:01 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:49:09 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:49:13 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:49:15 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:50:33 - dev_logger - INFO - on_shutdown: Bot stopped!
+2025-10-08 17:50:37 - dev_logger - INFO - init_db: Tables already exist. Skipping creation.
+2025-10-08 17:50:39 - dev_logger - INFO - on_startup: Bot started!
+2025-10-08 17:51:30 - dev_logger - INFO - on_shutdown: Bot stopped!

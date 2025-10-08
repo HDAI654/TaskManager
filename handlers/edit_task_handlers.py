@@ -125,15 +125,34 @@ async def handle_view_task(callback_query: CallbackQuery):
         ]
         
         inline_keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+
+        # Get all users assigned to this task
+        assigned_users = TaskService.get_task_users(db=db, task_id=task_id)
+
+        admin_user = UserService.get_user(db=db, user_id=task.admin_id)
+        if admin_user:
+            task_admin_username = admin_user.username
+        else:
+            task_admin_username = "نامشخص"
+        
+        # Create message text
+        if assigned_users:
+            users_text = "👥 کاربران اختصاص داده شده به این تسک:\n\n"
+            for i, user in enumerate(assigned_users, 1):
+                users_text += f"{i}. {user.username}\n"
+        else:
+            users_text = "📝 هیچ کاربری به این تسک اختصاص داده نشده است."
         
         # Edit previous message
         await callback_query.message.edit_text(
             f"📋 تسک انتخاب شده: {task.title}\n\n"
+            f"ادمین : {task_admin_username}\n"
             f"📝 توضیحات: {task.description or 'بدون توضیح'}\n"
             f"📅 شروع: {task.start_date.strftime('%Y-%m-%d') if task.start_date else 'تعیین نشده'}\n"
             f"📅 پایان: {task.end_date.strftime('%Y-%m-%d') if task.end_date else 'تعیین نشده'}\n"
             f"🔧 وضعیت: {task.status}\n\n"
-            "عملیات ها:",
+            f"کاربران:\n"
+            f"{users_text}",
             reply_markup=inline_keyboard
         )
         

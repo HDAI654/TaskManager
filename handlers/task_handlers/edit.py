@@ -321,6 +321,17 @@ async def handle_view_task(callback_query: CallbackQuery, state: FSMContext = No
 
         
         inline_keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+
+        # Get all users assigned to this task
+        assigned_users = TaskService.get_task_users(db=db, task_id=task_id)
+        
+        # Create message text for assigned_users
+        if assigned_users:
+            users_text = "👥 کاربران اختصاص داده شده به این تسک:\n\n"
+            for i, user in enumerate(assigned_users, 1):
+                users_text += f"{i}. {user.username}\n"
+        else:
+            users_text = "📝 هیچ کاربری به این تسک اختصاص داده نشده است."
         
         text = [
             f"📋 {task.title}\n\n",
@@ -329,6 +340,7 @@ async def handle_view_task(callback_query: CallbackQuery, state: FSMContext = No
             f"📅 شروع: {task.start_date.strftime('%Y-%m-%d') if task.start_date else 'تعیین نشده'}\n",
             f"📅 پایان: {task.end_date.strftime('%Y-%m-%d') if task.end_date else 'تعیین نشده'}\n",
             f"🔧 وضعیت: {task.status}\n\n",
+            users_text,
         ]
         if topic:
             text.insert(2, f"تاپیک : {topic.name} - {topic.link}\n")
